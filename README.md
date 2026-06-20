@@ -29,9 +29,9 @@ chmod +x "$SKILL_DIR/deep-research-suite/scripts/research"
 
 If your LLM tool has its own skill directory, copy `skills/deep-research-suite/SKILL.md` there instead and tell the agent where the helper script lives.
 
-## Claude Code: read this slowly
+## Claude Code manual install
 
-Claude, the skill **is here**. It is not magic. It is this folder in this repo:
+The skill folder in this repo is:
 
 ```text
 skills/deep-research-suite/
@@ -40,7 +40,7 @@ skills/deep-research-suite/
     └── research
 ```
 
-To install it for Claude Code, copy that whole folder into Claude Code's skills folder:
+For a personal Claude Code install, copy the whole folder into Claude Code's skills directory:
 
 ```bash
 mkdir -p ~/.claude/skills
@@ -48,29 +48,14 @@ cp -R skills/deep-research-suite ~/.claude/skills/
 chmod +x ~/.claude/skills/deep-research-suite/scripts/research
 ```
 
-Now check your work:
+Verify the installed files:
 
 ```bash
 ls ~/.claude/skills/deep-research-suite/SKILL.md
 ~/.claude/skills/deep-research-suite/scripts/research --help
 ```
 
-If `~/.claude/skills/` did not exist when Claude Code started, restart Claude Code so it watches the new skills folder. Then type `/deep-research-suite` or ask for deep research. If you still say the skill is not there, look at the exact path above again.
-
-## Give this to an LLM installer
-
-Paste this into an LLM that can edit files or configure your coding agent:
-
-```text
-Install https://github.com/g-baskin/research-tool as an agent skill.
-
-1. Clone the repository.
-2. Copy `skills/deep-research-suite/` into my agent's skill directory, or use `$HOME/.local/share/llm-skills/deep-research-suite/` if the tool has no preferred location.
-3. If my tool has no skill directory, read `skills/deep-research-suite/SKILL.md` and add it to the project/agent instructions.
-4. Ensure `skills/deep-research-suite/scripts/research` is executable.
-5. Verify with: `<installed-skill-dir>/scripts/research --help`.
-6. Explain that end users can ask for either landscape research or OSINT research, and that OSINT mode must use only lawful public sources.
-```
+If `~/.claude/skills/` did not exist when Claude Code started, restart Claude Code so it watches the new skills folder. Then invoke the skill with `/deep-research-suite` or ask for deep research.
 
 ## How to use it as an end user
 
