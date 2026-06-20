@@ -1,7 +1,7 @@
 ---
 name: deep-research-suite
 version: 1.0.0
-description: No-API deep research router for LLM agents: fast cited landscape reports plus lawful OSINT investigations with evidence grading, claim ledgers, tech-stack fingerprinting, and prior-art mapping.
+description: "No-API deep research router for LLM agents: fast cited landscape reports plus lawful OSINT investigations with evidence grading, claim ledgers, tech-stack fingerprinting, and prior-art mapping."
 ---
 
 # Deep Research Suite
@@ -41,16 +41,16 @@ Choose the smallest mode that satisfies the request.
 
 Prefer built-in agent tools first: web search, page fetch/readers, local shell commands, code search, repository inspection, and PDF/document readers if available.
 
-If this repository is installed, the optional helper lives at:
+If this repository is installed, the optional helper lives wherever you copied the skill folder:
 
 ```bash
-~/.gg/skills/deep-research-suite/scripts/research
+$SKILL_DIR/deep-research-suite/scripts/research
 ```
 
 Use it for no-API DuckDuckGo search and full-page fetches:
 
 ```bash
-~/.gg/skills/deep-research-suite/scripts/research --full \
+$SKILL_DIR/deep-research-suite/scripts/research --full \
   "<topic> overview 2026" \
   "<topic> market trends evidence" \
   "<topic> risks criticism alternatives" \
@@ -60,7 +60,7 @@ Use it for no-API DuckDuckGo search and full-page fetches:
 For a target investigation:
 
 ```bash
-~/.gg/skills/deep-research-suite/scripts/research --full \
+$SKILL_DIR/deep-research-suite/scripts/research --full \
   "<target> official website company founders owner" \
   "<target> pricing docs API changelog careers" \
   "<target> patents trademarks prior art competitors" \

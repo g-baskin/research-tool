@@ -20,12 +20,14 @@ Requires Python 3.11+ and [`uv`](https://docs.astral.sh/uv/getting-started/insta
 ```bash
 git clone https://github.com/g-baskin/research-tool.git
 cd research-tool
-mkdir -p ~/.gg/skills && cp -R skills/deep-research-suite ~/.gg/skills/
-chmod +x ~/.gg/skills/deep-research-suite/scripts/research
-~/.gg/skills/deep-research-suite/scripts/research --help
+export SKILL_DIR="$HOME/.local/share/llm-skills"
+mkdir -p "$SKILL_DIR"
+cp -R skills/deep-research-suite "$SKILL_DIR/"
+chmod +x "$SKILL_DIR/deep-research-suite/scripts/research"
+"$SKILL_DIR/deep-research-suite/scripts/research" --help
 ```
 
-If your LLM tool does not use `~/.gg/skills`, copy `skills/deep-research-suite/SKILL.md` into that tool's custom-instructions, project-rules, or skill directory and tell the agent where the helper script lives.
+If your LLM tool has its own skill directory, copy `skills/deep-research-suite/SKILL.md` there instead and tell the agent where the helper script lives.
 
 ## Give this to an LLM installer
 
@@ -35,12 +37,11 @@ Paste this into an LLM that can edit files or configure your coding agent:
 Install https://github.com/g-baskin/research-tool as an agent skill.
 
 1. Clone the repository.
-2. Copy `skills/deep-research-suite/` into my agent's skill directory.
-   - Preferred GG-style path: `~/.gg/skills/deep-research-suite/`
-   - If my tool has no skill directory, read `skills/deep-research-suite/SKILL.md` and add it to the project/agent instructions.
-3. Ensure `skills/deep-research-suite/scripts/research` is executable.
-4. Verify with: `~/.gg/skills/deep-research-suite/scripts/research --help`
-5. Explain that end users can ask for either landscape research or OSINT research, and that OSINT mode must use only lawful public sources.
+2. Copy `skills/deep-research-suite/` into my agent's skill directory, or use `$HOME/.local/share/llm-skills/deep-research-suite/` if the tool has no preferred location.
+3. If my tool has no skill directory, read `skills/deep-research-suite/SKILL.md` and add it to the project/agent instructions.
+4. Ensure `skills/deep-research-suite/scripts/research` is executable.
+5. Verify with: `<installed-skill-dir>/scripts/research --help`.
+6. Explain that end users can ask for either landscape research or OSINT research, and that OSINT mode must use only lawful public sources.
 ```
 
 ## How to use it as an end user
@@ -80,7 +81,7 @@ The helper is optional; the skill can also use your LLM's built-in web search/fe
 
 ```bash
 # General landscape research
-~/.gg/skills/deep-research-suite/scripts/research --full \
+$SKILL_DIR/deep-research-suite/scripts/research --full \
   "open-source CRM tools 2026 comparison" \
   "open-source CRM GitHub active projects" \
   "open-source CRM pricing hosted alternatives" \
@@ -89,7 +90,7 @@ The helper is optional; the skill can also use your LLM's built-in web search/fe
 
 ```bash
 # Public company/domain investigation
-~/.gg/skills/deep-research-suite/scripts/research --full \
+$SKILL_DIR/deep-research-suite/scripts/research --full \
   "example.com official company founders owner" \
   "example.com pricing docs API changelog careers" \
   "example.com competitors reviews complaints" \
@@ -98,7 +99,7 @@ The helper is optional; the skill can also use your LLM's built-in web search/fe
 
 ```bash
 # Fetch known URLs for deeper reading
-~/.gg/skills/deep-research-suite/scripts/research --fetch \
+$SKILL_DIR/deep-research-suite/scripts/research --fetch \
   "https://example.com/pricing" \
   "https://example.com/terms"
 ```
