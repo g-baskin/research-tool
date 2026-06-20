@@ -1,0 +1,254 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["ddgs>=9.0.0"]
+# ///
+# Adapted from the MIT-licensed Deep Research Pro helper by AstralSage.
+# See ../../../NOTICE.md for attribution.
+
+"""No-API helper for Deep Research Suite.
+
+Searches DuckDuckGo through ddgs, deduplicates URLs, optionally fetches page
+text, and prints Markdown or JSON. It is intentionally simple: the LLM still
+plans queries, grades evidence, and writes the final report.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Mapping
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+from ddgs import DDGS
+
+SearchResult = dict[str, object]
+
+
+def search_web(query: str, max_results: int) -> list[SearchResult]:
+    with DDGS() as ddgs:
+        return [normalize_result(result) for result in ddgs.text(query, max_results=max_results)]
+
+
+def search_news(query: str, max_results: int) -> list[SearchResult]:
+    with DDGS() as ddgs:
+        return [normalize_result(result) for result in ddgs.news(query, max_results=max_results)]
+
+
+def normalize_result(result: Mapping[str, object]) -> SearchResult:
+    url = result.get("href") or result.get("url") or ""
+    return {
+        "title": str(result.get("title") or ""),
+        "url": str(url),
+        "body": str(result.get("body") or result.get("snippet") or ""),
+        "source": str(result.get("source") or ""),
+        "date": str(result.get("date") or ""),
+    }
+
+
+def fetch_page(url: str, max_chars: int = 8_000) -> str:
+    request = Request(
+        url,
+        headers={
+            "User-Agent": "research-tool/1.0 (+https://github.com/g-baskin/research-tool)",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            raw = response.read()
+    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+        return f"[Fetch failed: {type(exc).__name__}: {exc}]"
+
+    html = raw.decode("utf-8", errors="ignore")
+    text = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:max_chars]
+
+
+def deduplicate(results: list[SearchResult]) -> list[SearchResult]:
+    seen: set[str] = set()
+    unique: list[SearchResult] = []
+    for result in results:
+        url = str(result.get("url") or "")
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        unique.append(result)
+    return unique
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="research",
+        description="No-API web/news search helper for LLM deep research.",
+    )
+    parser.add_argument("queries", nargs="*", help="Search queries or URLs when --fetch is used.")
+    parser.add_argument("--news", action="store_true", help="Include news search.")
+    parser.add_argument("--full", action="store_true", help="Search web + news and fetch top pages.")
+    parser.add_argument("--fetch", action="store_true", help="Fetch and extract text from the provided URLs.")
+    parser.add_argument("--max", type=int, default=8, help="Max web results per query. Default: 8.")
+    parser.add_argument("--fetch-top", type=int, default=0, help="Fetch full text of top N web results.")
+    parser.add_argument("--json", action="store_true", help="Print JSON instead of Markdown.")
+    parser.add_argument("--output", type=Path, help="Write output to a file.")
+    return parser
+
+
+def run(args: argparse.Namespace) -> dict[str, object]:
+    queries: list[str] = args.queries
+    if args.fetch:
+        fetched_urls = [
+            {"url": url, "title": url, "content": fetch_page(url)}
+            for url in queries
+        ]
+        return {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "queries": queries,
+            "web_results": [],
+            "news_results": [],
+            "fetched_pages": fetched_urls,
+            "stats": {"total_web": 0, "total_news": 0, "pages_fetched": len(fetched_urls)},
+        }
+
+    include_news = bool(args.news or args.full)
+    fetch_top = int(args.fetch_top)
+    if args.full and fetch_top == 0:
+        fetch_top = 3
+
+    web_results: list[SearchResult] = []
+    news_results: list[SearchResult] = []
+    for query in queries:
+        print(f"Searching web: {query}", file=sys.stderr)
+        web_results.extend(search_web(query, max_results=int(args.max)))
+        if include_news:
+            print(f"Searching news: {query}", file=sys.stderr)
+            news_results.extend(search_news(query, max_results=5))
+
+    web_results = deduplicate(web_results)
+    news_results = deduplicate(news_results)
+
+    fetched_pages: list[dict[str, str]] = []
+    for result in web_results[:fetch_top]:
+        url = str(result.get("url") or "")
+        if not url:
+            continue
+        print(f"Fetching: {url}", file=sys.stderr)
+        fetched_pages.append(
+            {
+                "url": url,
+                "title": str(result.get("title") or url),
+                "content": fetch_page(url),
+            }
+        )
+
+    return {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "queries": queries,
+        "web_results": web_results,
+        "news_results": news_results,
+        "fetched_pages": fetched_pages,
+        "stats": {
+            "total_web": len(web_results),
+            "total_news": len(news_results),
+            "pages_fetched": len(fetched_pages),
+        },
+    }
+
+
+def to_markdown(output: Mapping[str, object]) -> str:
+    web_results = output["web_results"]
+    news_results = output["news_results"]
+    fetched_pages = output["fetched_pages"]
+    stats = output["stats"]
+
+    if not isinstance(web_results, list) or not isinstance(news_results, list):
+        raise TypeError("Malformed result lists")
+    if not isinstance(fetched_pages, list) or not isinstance(stats, Mapping):
+        raise TypeError("Malformed output object")
+
+    lines = [
+        "# Research Helper Results",
+        "",
+        f"Generated: {output['timestamp']}",
+        f"Queries: {', '.join(str(query) for query in output['queries'])}",
+        f"Found: {stats['total_web']} web results, {stats['total_news']} news results, {stats['pages_fetched']} fetched pages",
+        "",
+    ]
+
+    if web_results:
+        lines.extend(["## Web Results", ""])
+        for index, result in enumerate(web_results, start=1):
+            if not isinstance(result, Mapping):
+                continue
+            lines.extend(
+                [
+                    f"{index}. [{result.get('title') or 'Untitled'}]({result.get('url') or ''})",
+                    f"   - {result.get('body') or ''}",
+                    "",
+                ]
+            )
+
+    if news_results:
+        lines.extend(["## News Results", ""])
+        for index, result in enumerate(news_results, start=1):
+            if not isinstance(result, Mapping):
+                continue
+            source = result.get("source") or "unknown source"
+            date = result.get("date") or "unknown date"
+            lines.extend(
+                [
+                    f"{index}. [{result.get('title') or 'Untitled'}]({result.get('url') or ''})",
+                    f"   - Source: {source}; Date: {date}",
+                    f"   - {result.get('body') or ''}",
+                    "",
+                ]
+            )
+
+    if fetched_pages:
+        lines.extend(["## Fetched Pages", ""])
+        for page in fetched_pages:
+            if not isinstance(page, Mapping):
+                continue
+            lines.extend(
+                [
+                    f"### {page.get('title') or page.get('url')}",
+                    "",
+                    f"URL: {page.get('url')}",
+                    "",
+                    "```text",
+                    str(page.get("content") or "")[:4_000],
+                    "```",
+                    "",
+                ]
+            )
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+    if not args.queries:
+        parser.error("provide at least one query, or URLs with --fetch")
+
+    output = run(args)
+    rendered = json.dumps(output, indent=2) if args.json else to_markdown(output)
+
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered, encoding="utf-8")
+        print(f"Saved to {args.output}", file=sys.stderr)
+        return
+
+    print(rendered)
+
+
+if __name__ == "__main__":
+    main()

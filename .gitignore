@@ -1,0 +1,13 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Local research outputs
+research-reports/
+research-raw.md
+osint-raw.md
+*.raw.md
+
+# Local environment files
+.env
+.env.*
