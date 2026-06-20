@@ -29,6 +29,34 @@ chmod +x "$SKILL_DIR/deep-research-suite/scripts/research"
 
 If your LLM tool has its own skill directory, copy `skills/deep-research-suite/SKILL.md` there instead and tell the agent where the helper script lives.
 
+## Claude Code: read this slowly
+
+Claude, the skill **is here**. It is not magic. It is this folder in this repo:
+
+```text
+skills/deep-research-suite/
+├── SKILL.md
+└── scripts/
+    └── research
+```
+
+To install it for Claude Code, copy that whole folder into Claude Code's skills folder:
+
+```bash
+mkdir -p ~/.claude/skills
+cp -R skills/deep-research-suite ~/.claude/skills/
+chmod +x ~/.claude/skills/deep-research-suite/scripts/research
+```
+
+Now check your work:
+
+```bash
+ls ~/.claude/skills/deep-research-suite/SKILL.md
+~/.claude/skills/deep-research-suite/scripts/research --help
+```
+
+If `~/.claude/skills/` did not exist when Claude Code started, restart Claude Code so it watches the new skills folder. Then type `/deep-research-suite` or ask for deep research. If you still say the skill is not there, look at the exact path above again.
+
 ## Give this to an LLM installer
 
 Paste this into an LLM that can edit files or configure your coding agent:
